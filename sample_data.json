@@ -1,0 +1,51 @@
+{
+	"reports": [
+		{
+			"id": "e4b29c9a-5f32-4d8b-9e12-3a8c5f9b4d1a",
+			"categories": ["Pothole", "Road Damage"],
+			"latitude": -6.914744,
+			"longitude": 107.60981,
+			"imageUrl": "https://example.com/images/pothole-braga.jpg",
+			"resolutionImageUrl": null,
+			"userEmail": "citizen@example.com",
+			"status": "REAL",
+			"createdAt": "2026-04-10T08:30:00Z"
+		},
+		{
+			"id": "a1c38f9b-2e41-4c7a-8d01-2b7d4e8a3c2b",
+			"categories": ["Broken Light"],
+			"latitude": -6.890321,
+			"longitude": 107.610382,
+			"imageUrl": null,
+			"resolutionImageUrl": null,
+			"userEmail": null,
+			"status": "PENDING",
+			"createdAt": "2026-04-13T19:45:00Z"
+		},
+		{
+			"id": "f5d17a8c-3b20-4e69-9c12-1a6c3d7b2e1f",
+			"categories": ["Blocked Sidewalk", "Accessibility"],
+			"latitude": -6.903891,
+			"longitude": 107.618612,
+			"imageUrl": "https://example.com/images/blocked-sidewalk-dago.jpg",
+			"resolutionImageUrl": "https://example.com/images/cleared-sidewalk-dago.jpg",
+			"userEmail": "advocate@example.com",
+			"status": "COMPLETED",
+			"createdAt": "2026-04-01T14:15:00Z"
+		}
+	],
+	"upvotes": [
+		{
+			"id": "u1b29c9a-5f32-4d8b-9e12-3a8c5f9b4d1a",
+			"reportId": "e4b29c9a-5f32-4d8b-9e12-3a8c5f9b4d1a",
+			"userIp": "192.168.1.15",
+			"createdAt": "2026-04-10T09:00:00Z"
+		},
+		{
+			"id": "u2c38f9b-2e41-4c7a-8d01-2b7d4e8a3c2b",
+			"reportId": "e4b29c9a-5f32-4d8b-9e12-3a8c5f9b4d1a",
+			"userIp": "10.0.0.45",
+			"createdAt": "2026-04-10T11:20:00Z"
+		}
+	]
+}
