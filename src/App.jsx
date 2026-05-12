@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
@@ -181,10 +181,9 @@ function App() {
 		return createdReport;
 	};
 
-	const addUpvote = async (reportId, userIp) => {
+	const addUpvote = async (reportId) => {
 		const response = await apiRequest(`/api/reports/${reportId}/upvote`, {
 			method: "POST",
-			body: JSON.stringify({ userIp }),
 		});
 
 		const updatedReport = upsertReport(response.report);
@@ -337,9 +336,16 @@ function App() {
 }
 
 function NavLink({ to, children }) {
+	const location = useLocation();
+	const isActive = to === "/" ? location.pathname === "/" || location.pathname.startsWith("/upvote/") : location.pathname === to;
+
 	return (
 		<Link
-			className="rounded-full border border-[#3a281b1f] bg-white/50 px-4 py-3 text-sm font-semibold text-[#1f1a17] shadow-inner shadow-white/50 transition hover:-translate-y-0.5"
+			className={
+				isActive
+					? "rounded-full border border-[#b1442c66] bg-[#b1442c14] px-4 py-3 text-sm font-bold text-[#8f2f2f] shadow-inner shadow-white/50 transition hover:-translate-y-0.5"
+					: "rounded-full border border-[#3a281b1f] bg-white/50 px-4 py-3 text-sm font-semibold text-[#1f1a17] shadow-inner shadow-white/50 transition hover:-translate-y-0.5"
+			}
 			to={to}>
 			{children}
 		</Link>
@@ -623,7 +629,7 @@ function SubmitPage({ onCreateReport, reports, isLoadingReports }) {
 						/>
 					</label>
 
-					<label className="grid gap-2">
+					{/* <label className="grid gap-2">
 						<span className="text-sm text-[#6a5d55]">Image URL</span>
 						<input
 							className={fieldBase}
@@ -631,7 +637,7 @@ function SubmitPage({ onCreateReport, reports, isLoadingReports }) {
 							onChange={(event) => setForm({ ...form, imageUrl: event.target.value })}
 							placeholder="https://..."
 						/>
-					</label>
+					</label> */}
 
 					{/* <label className="grid gap-2">
 						<span className="text-sm text-[#6a5d55]">Latitude</span>
@@ -812,10 +818,39 @@ function UpvotePage({ reports, onAddUpvote, isLoadingReports }) {
 	const navigate = useNavigate();
 	const { id } = useParams();
 	const report = reports.find((item) => item.id === id);
-	const [userIp, setUserIp] = useState("");
 	const [message, setMessage] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [upvoteError, setUpvoteError] = useState("");
+	const [hasConfirmed, setHasConfirmed] = useState(false);
+	const confirmationKey = `urbanfix.upvoteConfirmed.${id}`;
+
+	useEffect(() => {
+		if (!report) {
+			return;
+		}
+
+		try {
+			setHasConfirmed(window.localStorage.getItem(confirmationKey) === "true");
+		} catch {
+			setHasConfirmed(false);
+		}
+	}, [confirmationKey, report]);
+
+	useEffect(() => {
+		if (!report) {
+			return;
+		}
+
+		try {
+			if (hasConfirmed) {
+				window.localStorage.setItem(confirmationKey, "true");
+			} else {
+				window.localStorage.removeItem(confirmationKey);
+			}
+		} catch {
+			return;
+		}
+	}, [confirmationKey, hasConfirmed, report]);
 
 	if (isLoadingReports) {
 		return (
@@ -841,8 +876,9 @@ function UpvotePage({ reports, onAddUpvote, isLoadingReports }) {
 	}
 
 	const handleUpvote = () => {
-		if (!userIp.trim()) {
-			setMessage("Enter a user IP to simulate the validation flow.");
+		if (hasConfirmed) {
+			setMessage("You already confirmed this problem.");
+			setUpvoteError("");
 			return;
 		}
 
@@ -850,10 +886,16 @@ function UpvotePage({ reports, onAddUpvote, isLoadingReports }) {
 		setUpvoteError("");
 		setMessage("");
 
-		void onAddUpvote(report.id, userIp.trim())
+		void onAddUpvote(report.id)
 			.then((result) => {
-				setMessage(result.isNewUpvote ? `Upvote recorded. Total votes: ${result.totalUpvotes}.` : "This validation was already recorded for that report.");
-				setUserIp("");
+				if (result.isNewUpvote) {
+					setHasConfirmed(true);
+					setMessage(`Upvote recorded. Total votes: ${result.totalUpvotes}.`);
+					return;
+				}
+
+				setHasConfirmed(true);
+				setUpvoteError("You already confirmed this problem.");
 			})
 			.catch((error) => {
 				setUpvoteError(error.message || "Unable to record upvote");
@@ -888,22 +930,15 @@ function UpvotePage({ reports, onAddUpvote, isLoadingReports }) {
 				</div>
 
 				<div className="rounded-3xl border border-[#3a281b1f] bg-white/85 p-4 md:p-5">
-					<label className="grid gap-2">
-						<span className="text-sm text-[#6a5d55]">Validation IP</span>
-						<input
-							className={fieldBase}
-							value={userIp}
-							onChange={(event) => setUserIp(event.target.value)}
-							placeholder="203.0.113.42"
-						/>
-					</label>
+					<p className="text-sm text-[#6a5d55]">Press the button below to confirm the report using your current client IP automatically.</p>
+					{hasConfirmed ? <div className="mt-3 rounded-2xl border border-[#1f7a4f24] bg-[#1f7a4f10] px-4 py-3 text-sm text-[#1f7a4f]">You already confirmed this problem from this IP.</div> : null}
 
 					<button
 						className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-gradient-to-r from-[#b1442c] to-[#8f2f2f] px-5 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
 						type="button"
-						disabled={isSubmitting}
+						disabled={isSubmitting || hasConfirmed}
 						onClick={handleUpvote}>
-						{isSubmitting ? "Recording..." : "Confirm issue"}
+						{isSubmitting ? "Recording..." : hasConfirmed ? "Already confirmed" : "Confirm issue"}
 					</button>
 
 					<p className="mt-3 text-sm text-[#6a5d55]">{message}</p>
@@ -1116,29 +1151,6 @@ function AdminPage({ reports, onCompleteReport, onLogin, onLogout, adminToken, a
 			</section>
 
 			<section className={`${cardBase} grid gap-4 md:grid-cols-[1fr_0.8fr]`}>
-				<div className="grid gap-3">
-					<h3 className="font-display text-2xl">Priority queue</h3>
-					{sortedReports.map((report) => (
-						<button
-							className={
-								activeReportId === report.id
-									? "flex items-center justify-between gap-3 rounded-2xl border border-[#b1442c52] bg-[#b1442c14] p-4 text-left transition hover:-translate-y-0.5"
-									: "flex items-center justify-between gap-3 rounded-2xl border border-[#3a281b1f] bg-white/70 p-4 text-left transition hover:-translate-y-0.5"
-							}
-							key={report.id}
-							type="button"
-							onClick={() => setActiveReportId(report.id)}>
-							<div>
-								<strong className="font-display text-xl leading-tight">{report.title}</strong>
-								<p className="mt-1 text-sm text-[#6a5d55]">
-									{report.status} · {report.upvoteCount} upvotes
-								</p>
-							</div>
-							<StatusBadge status={report.status} />
-						</button>
-					))}
-				</div>
-
 				<div className="rounded-3xl border border-[#3a281b1f] bg-white/85 p-4 md:p-5">
 					<label className="grid gap-2">
 						<span className="text-sm text-[#6a5d55]">Report ID</span>
@@ -1184,6 +1196,28 @@ function AdminPage({ reports, onCompleteReport, onLogin, onLogout, adminToken, a
 					<p className="mt-3 text-sm text-[#6a5d55]">This action mirrors the API rule: completion requires an image proof URL.</p>
 					{completionMessage ? <p className="mt-2 text-sm text-[#1f7a4f]">{completionMessage}</p> : null}
 					{completionError ? <p className="mt-2 text-sm text-[#b1442c]">{completionError}</p> : null}
+				</div>
+				<div className="grid gap-3">
+					<h3 className="font-display text-2xl">Priority queue</h3>
+					{sortedReports.map((report) => (
+						<button
+							className={
+								activeReportId === report.id
+									? "flex items-center justify-between gap-3 rounded-2xl border border-[#b1442c52] bg-[#b1442c14] p-4 text-left transition hover:-translate-y-0.5"
+									: "flex items-center justify-between gap-3 rounded-2xl border border-[#3a281b1f] bg-white/70 p-4 text-left transition hover:-translate-y-0.5"
+							}
+							key={report.id}
+							type="button"
+							onClick={() => setActiveReportId(report.id)}>
+							<div>
+								<strong className="font-display text-xl leading-tight">{report.title}</strong>
+								<p className="mt-1 text-sm text-[#6a5d55]">
+									{report.status} · {report.upvoteCount} upvotes
+								</p>
+							</div>
+							<StatusBadge status={report.status} />
+						</button>
+					))}
 				</div>
 			</section>
 		</section>

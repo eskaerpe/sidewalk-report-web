@@ -1,1 +1,15 @@
 node_modules
+dist
+coverage
+.vite
+
+.env
+.env.local
+.env.development
+.env.development.local
+.env.production
+.env.production.local
+.env.test
+.env.test.local
+
+github
